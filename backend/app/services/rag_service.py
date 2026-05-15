@@ -98,16 +98,19 @@ def reformulate_query(query: str, history: list) -> str:
         history_str = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in history[-4:]]) # Last 4 turns
         
         prompt = PromptTemplate.from_template("""
-        Given the following chat history and the user's latest question, rewrite the latest question into a fully descriptive standalone search query. 
-        Replace words like 'it', 'that', 'they', 'why' with the actual subject from the history.
-        Do NOT answer the question. ONLY output the rewritten standalone query.
+        Given the chat history and the user's latest question, extract the core subject matter into a concise keyword search query.
+        Drop all conversational filler (e.g., "what is", "can you tell me", "why does"). 
+        Generate just the 2-5 most important keywords that represent the topic.
+        Example 1: "Can you explain what Ashwagandha is?" -> "Ashwagandha"
+        Example 2: "Why is that used for stress?" (where history implies Ashwagandha) -> "Ashwagandha stress benefits"
+        ONLY output the keywords.
         
         Chat History:
         {history}
         
         Latest Question: {query}
         
-        Standalone Search Query:
+        Keyword Search Query:
         """)
         
         chain = prompt | llm
@@ -164,7 +167,7 @@ def query_rag(query: str, language: str = "en", history: list = None) -> dict:
     avg_confidence = round((total_score / len(docs_with_scores)) * 100, 1)
     
     # Hallucination check based on confidence
-    if avg_confidence < 40:
+    if avg_confidence < 25:
         return {
             "answer": "I'm sorry, but the uploaded PDFs do not contain enough relevant information to answer this accurately.",
             "citations": citations,
