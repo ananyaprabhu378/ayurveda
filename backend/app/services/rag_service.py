@@ -102,9 +102,9 @@ def query_rag(query: str, language: str = "en") -> dict:
     avg_confidence = round((total_score / len(docs_with_scores)) * 100, 1)
     
     # Hallucination check based on confidence
-    if avg_confidence < 30:
+    if avg_confidence < 40:
         return {
-            "answer": "The indexed Ayurvedic knowledge base does not contain sufficient reliable information for this query. The semantic match confidence is too low to provide a grounded response.",
+            "answer": "I'm sorry, but the uploaded PDFs do not contain enough relevant information to answer this accurately.",
             "citations": citations,
             "retrieval_metadata": {"status": "low_confidence", "confidence": avg_confidence}
         }
@@ -117,20 +117,19 @@ def query_rag(query: str, language: str = "en") -> dict:
         }
 
     try:
-        llm = ChatGroq(temperature=0.1, model_name="llama-3.3-70b-versatile", groq_api_key=settings.GROQ_API_KEY)
+        llm = ChatGroq(temperature=0.0, model_name="llama-3.3-70b-versatile", groq_api_key=settings.GROQ_API_KEY)
     except Exception as e:
         return {"answer": f"Error: {str(e)}", "citations": []}
     
     prompt = PromptTemplate.from_template("""
     You are 'AI Vaidya', a specialized Ayurvedic Knowledge Assistant.
     
-    STRICT GROUNDING RULES:
-    1. Answer the question ONLY using the provided retrieved context.
-    2. NEVER use external internet knowledge or generic AI training data to supplement the answer.
-    3. If the answer is not explicitly contained within the context, state: "The indexed Ayurvedic knowledge base does not contain sufficient information to answer this accurately."
-    4. Provide a technical, expert Ayurvedic perspective based strictly on the texts.
-    5. Do NOT mention "Based on the provided context" in every sentence; make it a natural but strictly grounded response.
-    6. Ensure the response is in {language}.
+    CRITICAL AND STRICT GROUNDING RULES - READ CAREFULLY:
+    1. You MUST answer the user's question using ONLY the information provided in the 'Retrieved Context' below.
+    2. NEVER use your own pre-trained knowledge, external internet knowledge, or assumptions to supplement the answer.
+    3. If the 'Retrieved Context' does not contain the exact information needed to fully answer the question, you MUST reply EXACTLY with: "I'm sorry, but the uploaded PDFs do not contain information regarding this." and say nothing else.
+    4. Do not attempt to guess or infer information that is not explicitly stated in the context.
+    5. Ensure the response is in {language}.
 
     Retrieved Context:
     {context}
