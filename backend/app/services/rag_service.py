@@ -16,7 +16,8 @@ def get_embeddings():
     global _embeddings
     if _embeddings is None:
         print("Loading FastEmbed model (Memory optimized)...")
-        _embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5", threads=1)
+        # Switching to a smaller model to stay well under 512MB RAM
+        _embeddings = FastEmbedEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2", threads=1)
     return _embeddings
 
 def get_vector_store():
@@ -50,7 +51,7 @@ def process_and_index_document(pages_data: list):
     chunks = text_splitter.split_documents(documents)
     
     vector_store = get_vector_store()
-    BATCH_SIZE = 16
+    BATCH_SIZE = 4
     
     # Process in small batches to avoid Out-Of-Memory (OOM) on Render
     for i in range(0, len(chunks), BATCH_SIZE):
