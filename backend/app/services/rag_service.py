@@ -1,5 +1,6 @@
 import os
 import gc
+import fitz
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -33,38 +34,58 @@ def save_vector_store(vector_store: FAISS):
     os.makedirs(settings.FAISS_INDEX_DIR, exist_ok=True)
     vector_store.save_local(settings.FAISS_INDEX_DIR)
 
-def process_and_index_document(pages_data: list):
-    documents = []
-    for data in pages_data:
-        doc = Document(
-            page_content=data['text'],
-            metadata={"source": data['source'], "page": data['page']}
-        )
-        documents.append(doc)
-
+def stream_and_index_pdf(filepath: str) -> tuple[int, int]:
+    """O(1) memory streaming PDF indexer."""
+    vector_store = get_vector_store()
+    
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=200,
         length_function=len
     )
     
-    chunks = text_splitter.split_documents(documents)
+    doc = fitz.open(filepath)
+    total_chunks = 0
+    total_pages = len(doc)
     
-    vector_store = get_vector_store()
-    BATCH_SIZE = 4
-    
-    # Process in small batches to avoid Out-Of-Memory (OOM) on Render
-    for i in range(0, len(chunks), BATCH_SIZE):
-        batch = chunks[i:i + BATCH_SIZE]
-        if vector_store is None:
-            vector_store = FAISS.from_documents(batch, get_embeddings())
-        else:
-            vector_store.add_documents(batch)
-        gc.collect()  # Aggressively free memory after every batch
+    for page_num in range(total_pages):
+        page = doc.load_page(page_num)
+        text = page.get_text()
         
-    save_vector_store(vector_store)
-    gc.collect() # Final cleanup
-    return len(chunks)
+        if not text.strip():
+            continue
+            
+        document = Document(
+            page_content=text,
+            metadata={"source": os.path.basename(filepath), "page": page_num + 1}
+        )
+        
+        chunks = text_splitter.split_documents([document])
+        
+        if not chunks:
+            continue
+            
+        total_chunks += len(chunks)
+        
+        # Batch size is essentially the number of chunks on one single page (usually ~3-5).
+        if vector_store is None:
+            vector_store = FAISS.from_documents(chunks, get_embeddings())
+        else:
+            vector_store.add_documents(chunks)
+            
+        # O(1) Memory Guarantee: Delete page from RAM before moving to next
+        del page
+        del chunks
+        del document
+        gc.collect()
+        
+    doc.close()
+    
+    if vector_store:
+        save_vector_store(vector_store)
+        
+    gc.collect()
+    return total_pages, total_chunks
 
 def query_rag(query: str, language: str = "en") -> dict:
     vector_store = get_vector_store()

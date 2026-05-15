@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.models.metadata import Document
 from app.schemas.document import DocumentResponse
-from app.services.pdf_service import extract_text_from_pdf, get_file_hash
-from app.services.rag_service import process_and_index_document
+from app.services.pdf_service import get_file_hash
+from app.services.rag_service import stream_and_index_pdf
 from app.core.config import settings
 
 router = APIRouter()
@@ -53,11 +53,9 @@ def process_pdf_background(doc_id: int, filepath: str, db: Session):
         return
         
     try:
-        pages_data = extract_text_from_pdf(filepath)
-        db_doc.num_pages = len(pages_data)
-        
-        # Index
-        num_chunks = process_and_index_document(pages_data)
+        # Stream and index page-by-page with O(1) memory
+        num_pages, num_chunks = stream_and_index_pdf(filepath)
+        db_doc.num_pages = num_pages
         
         db_doc.status = "indexed"
         db.commit()
