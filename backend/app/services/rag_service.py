@@ -16,7 +16,7 @@ def get_embeddings():
     global _embeddings
     if _embeddings is None:
         print("Loading FastEmbed model (Memory optimized)...")
-        _embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+        _embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5", threads=1)
     return _embeddings
 
 # Baseline Ayurvedic Knowledge (Seeds if no PDFs are uploaded)
