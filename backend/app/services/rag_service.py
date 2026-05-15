@@ -1,30 +1,23 @@
 import os
 import gc
-
-# Optimize memory usage for constrained environments (e.g., 512MB RAM)
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ["MKL_NUM_THREADS"] = "1"
-os.environ["TORCH_NUM_THREADS"] = "1"
-os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
-
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from app.core.config import settings
 
-# Disable torch gradients globally to save memory
-import torch
-torch.set_grad_enabled(False)
+# Global variable for lazy loading
+_embeddings = None
 
-# Initialize Embeddings with memory optimizations
-embeddings = HuggingFaceEmbeddings(
-    model_name="BAAI/bge-small-en-v1.5",
-    model_kwargs={'device': 'cpu'},
-    encode_kwargs={'normalize_embeddings': True, 'batch_size': 1}
-)
+def get_embeddings():
+    """Lazy load embeddings to save memory on startup"""
+    global _embeddings
+    if _embeddings is None:
+        print("Loading FastEmbed model (Memory optimized)...")
+        _embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+    return _embeddings
 
 # Baseline Ayurvedic Knowledge (Seeds if no PDFs are uploaded)
 BASELINE_DATA = [
@@ -40,7 +33,7 @@ BASELINE_DATA = [
 def get_vector_store():
     if os.path.exists(settings.FAISS_INDEX_DIR):
         try:
-            return FAISS.load_local(settings.FAISS_INDEX_DIR, embeddings, allow_dangerous_deserialization=True)
+            return FAISS.load_local(settings.FAISS_INDEX_DIR, get_embeddings(), allow_dangerous_deserialization=True)
         except Exception as e:
             print(f"Error loading FAISS index: {e}")
             return seed_baseline_knowledge()
@@ -53,7 +46,7 @@ def seed_baseline_knowledge():
         Document(page_content=item['text'], metadata={"source": item['source'], "page": item['page']})
         for item in BASELINE_DATA
     ]
-    vector_store = FAISS.from_documents(documents, embeddings)
+    vector_store = FAISS.from_documents(documents, get_embeddings())
     save_vector_store(vector_store)
     return vector_store
 
@@ -80,7 +73,7 @@ def process_and_index_document(pages_data: list):
     
     vector_store = get_vector_store()
     if vector_store is None:
-        vector_store = FAISS.from_documents(chunks, embeddings)
+        vector_store = FAISS.from_documents(chunks, get_embeddings())
     else:
         vector_store.add_documents(chunks)
         
