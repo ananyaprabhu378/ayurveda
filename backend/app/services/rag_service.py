@@ -50,13 +50,19 @@ def process_and_index_document(pages_data: list):
     chunks = text_splitter.split_documents(documents)
     
     vector_store = get_vector_store()
-    if vector_store is None:
-        vector_store = FAISS.from_documents(chunks, get_embeddings())
-    else:
-        vector_store.add_documents(chunks)
+    BATCH_SIZE = 16
+    
+    # Process in small batches to avoid Out-Of-Memory (OOM) on Render
+    for i in range(0, len(chunks), BATCH_SIZE):
+        batch = chunks[i:i + BATCH_SIZE]
+        if vector_store is None:
+            vector_store = FAISS.from_documents(batch, get_embeddings())
+        else:
+            vector_store.add_documents(batch)
+        gc.collect()  # Aggressively free memory after every batch
         
     save_vector_store(vector_store)
-    gc.collect() # Free memory after indexing
+    gc.collect() # Final cleanup
     return len(chunks)
 
 def query_rag(query: str, language: str = "en") -> dict:
