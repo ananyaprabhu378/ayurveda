@@ -143,36 +143,40 @@ def query_rag(query: str, language: str = "en", history: list = None) -> dict:
             "retrieval_metadata": {"status": "no_results", "confidence": 0}
         }
         
+    # Deduplicate and Clean Chunks
+    unique_chunks = {}
+    for doc, score in docs_with_scores:
+        cleaned_content = " ".join(doc.page_content.split())
+        if cleaned_content not in unique_chunks:
+            unique_chunks[cleaned_content] = (doc, score)
+            
+    unique_docs_with_scores = list(unique_chunks.values())
+
     # Format context and citations
     context = ""
     citations = []
     total_score = 0
     
-    for doc, score in docs_with_scores:
+    for doc, score in unique_docs_with_scores:
         # Convert L2 distance to a rough confidence score (0 to 1)
-        # Typical L2 distances for BGE range from 0 to 1.5+. 
         confidence = max(0, 1 - (score / 1.5))
         total_score += confidence
         
+        cleaned_content = " ".join(doc.page_content.split())
+        
         context += f"Source: {doc.metadata.get('source')} (Page {doc.metadata.get('page')})\n"
-        context += f"Content: {doc.page_content}\n\n"
+        context += f"Content: {cleaned_content}\n\n"
         
         citations.append({
             "source": doc.metadata.get('source', 'Unknown'),
             "page": doc.metadata.get('page', 0),
-            "snippet": doc.page_content,
+            "snippet": cleaned_content,
             "score": round(confidence * 100, 1)
         })
         
-    avg_confidence = round((total_score / len(docs_with_scores)) * 100, 1)
+    avg_confidence = round((total_score / len(unique_docs_with_scores)) * 100, 1)
     
-    # Hallucination check based on confidence
-    if avg_confidence < 25:
-        return {
-            "answer": "I'm sorry, but the uploaded PDFs do not contain enough relevant information to answer this accurately.",
-            "citations": citations,
-            "retrieval_metadata": {"status": "low_confidence", "confidence": avg_confidence}
-        }
+    # We no longer hard-reject based on avg_confidence. We let the LLM judge the retrieved context.
 
     # Generate Answer
     if not settings.GROQ_API_KEY or settings.GROQ_API_KEY == "your-groq-api-key":
@@ -187,21 +191,17 @@ def query_rag(query: str, language: str = "en", history: list = None) -> dict:
         return {"answer": f"Error: {str(e)}", "citations": []}
     
     prompt = PromptTemplate.from_template("""
-    You are 'AI Vaidya', a specialized Ayurvedic Knowledge Assistant.
-    
-    CRITICAL AND STRICT GROUNDING RULES - READ CAREFULLY:
-    1. You MUST answer the user's question using ONLY the information provided in the 'Retrieved Context' below.
-    2. NEVER use your own pre-trained knowledge, external internet knowledge, or assumptions to supplement the answer.
-    3. If the 'Retrieved Context' does not contain the exact information needed to fully answer the question, you MUST reply EXACTLY with: "I'm sorry, but the uploaded PDFs do not contain information regarding this." and say nothing else.
-    4. Do not attempt to guess or infer information that is not explicitly stated in the context.
-    5. Ensure the response is in {language}.
+    You are an Ayurvedic document assistant. Answer ONLY using the retrieved document context provided below. 
+    Do not use outside knowledge. Do not hallucinate or invent information. 
+    If the answer is not clearly supported by the retrieved context, politely state that the uploaded PDFs do not contain sufficient information. 
+    Generate concise, natural, educational explanations in {language}.
 
     Retrieved Context:
     {context}
 
     User Question: {standalone_query}
     
-    Grounded Answer:
+    Answer:
     """)
     
     chain = prompt | llm
