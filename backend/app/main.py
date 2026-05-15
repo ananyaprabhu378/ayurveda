@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.endpoints import documents, chat
+from app.api.endpoints import documents, chat, auth
 from app.db.database import engine, Base
 import os
 from app.core.config import settings
@@ -18,8 +18,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(documents.router, prefix="/api/documents", tags=["documents"])
 app.include_router(chat.router, prefix="/api/chat", tags=["chat"])
+
 
 @app.get("/api/health")
 def health_check():

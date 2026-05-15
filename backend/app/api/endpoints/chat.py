@@ -13,7 +13,8 @@ def chat_with_vaidya(query: ChatQuery, db: Session = Depends(get_db)):
     user_msg = ChatHistory(
         session_id=query.session_id,
         role="user",
-        content=query.query
+        content=query.query,
+        user_id=query.user_id
     )
     db.add(user_msg)
     db.commit()
@@ -29,15 +30,18 @@ def chat_with_vaidya(query: ChatQuery, db: Session = Depends(get_db)):
     assistant_msg = ChatHistory(
         session_id=query.session_id,
         role="assistant",
-        content=response_data["answer"]
+        content=response_data["answer"],
+        user_id=query.user_id
     )
     db.add(assistant_msg)
     db.commit()
+
     
     return ChatResponse(
         answer=response_data["answer"],
         citations=response_data["citations"],
-        language=query.language or "en"
+        language=query.language or "en",
+        retrieval_metadata=response_data.get("retrieval_metadata")
     )
 
 @router.get("/history/{session_id}")

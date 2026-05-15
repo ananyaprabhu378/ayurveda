@@ -2,11 +2,112 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Mic, MicOff, Volume2, VolumeX, Sparkles, BookOpen, Leaf, PenTool, RefreshCw } from "lucide-react";
+import { 
+  Send, Mic, MicOff, Volume2, VolumeX, Sparkles, BookOpen, 
+  Leaf, PenTool, RefreshCw, Database, ChevronRight, 
+  Target, Info, AlertCircle, FileText, Activity
+} from "lucide-react";
 import { useStore } from "@/store/useStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import HerbCard, { findMentionedHerbs } from "./HerbCard";
+
+// --- Semantic Retrieval Panel ---
+function SemanticRetrievalPanel({ message }: { message: any }) {
+  if (!message.retrieval_metadata || !message.citations) return null;
+
+  const { confidence, count, status } = message.retrieval_metadata;
+  const citations = message.citations;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      className="mt-6 border border-emerald-500/20 rounded-3xl bg-emerald-950/20 backdrop-blur-md overflow-hidden shadow-inner"
+    >
+      <div className="px-5 py-4 border-b border-emerald-500/10 flex items-center justify-between bg-emerald-500/5">
+        <div className="flex items-center gap-2">
+          <Database className="w-4 h-4 text-emerald-400" />
+          <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-100">Semantic Retrieval Engine</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2 py-1 rounded-full border border-emerald-500/20">
+            <Target className="w-3 h-3 text-emerald-400" />
+            <span className="text-[10px] font-bold text-emerald-400">{confidence}% Match</span>
+          </div>
+          <div className="text-[10px] text-emerald-100/40 uppercase font-bold">{count} Chunks Found</div>
+        </div>
+      </div>
+
+      <div className="p-5 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar">
+        {citations.map((cit: any, idx: number) => (
+          <div key={idx} className="group relative">
+            <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-emerald-500/20 group-hover:bg-emerald-500/50 transition-colors" />
+            <div className="pl-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-400 uppercase tracking-tighter">
+                  <FileText className="w-3 h-3" /> {cit.source} <span className="text-emerald-100/20">•</span> Page {cit.page}
+                </div>
+                <div className="text-[10px] font-bold text-emerald-100/40">{cit.score}% Similarity</div>
+              </div>
+              <p className="text-xs text-emerald-100/60 leading-relaxed italic line-clamp-3 group-hover:line-clamp-none transition-all duration-300">
+                "{cit.snippet}"
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="px-5 py-3 bg-emerald-500/5 border-t border-emerald-500/10 flex items-center gap-2">
+        <Info className="w-3 h-3 text-emerald-400/50" />
+        <span className="text-[8px] uppercase tracking-widest text-emerald-100/30">
+          Grounded Generation Active • Non-Internet Mode Enabled
+        </span>
+      </div>
+    </motion.div>
+  );
+}
+
+// --- Retrieval Animation ---
+function RetrievalAnimation() {
+  return (
+    <div className="relative w-full h-24 overflow-hidden rounded-2xl bg-emerald-500/5 flex items-center justify-center border border-emerald-500/10">
+      <div className="absolute inset-0 opacity-20">
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-gradient-to-r from-transparent via-emerald-500 to-transparent" />
+        <div className="absolute top-0 bottom-0 left-1/2 w-px bg-gradient-to-b from-transparent via-emerald-500 to-transparent" />
+      </div>
+      
+      {/* Moving Vector Particles */}
+      {[...Array(8)].map((_, i) => (
+        <motion.div
+          key={i}
+          className="absolute w-1 h-1 bg-emerald-400 rounded-full"
+          initial={{ x: (Math.random() - 0.5) * 300, y: (Math.random() - 0.5) * 100, opacity: 0 }}
+          animate={{ 
+            x: [(Math.random() - 0.5) * 300, (Math.random() - 0.5) * 300], 
+            y: [(Math.random() - 0.5) * 100, (Math.random() - 0.5) * 100],
+            opacity: [0, 1, 0],
+            scale: [0, 1.5, 0]
+          }}
+          transition={{ duration: 2, repeat: Infinity, delay: i * 0.2 }}
+        />
+      ))}
+
+      {/* Semantic Node Ring */}
+      <motion.div
+        className="w-16 h-16 border-2 border-emerald-500/30 rounded-full flex items-center justify-center"
+        animate={{ scale: [1, 1.2, 1], rotate: 360 }}
+        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+      >
+        <div className="w-10 h-10 border border-emerald-500/50 rounded-full animate-pulse" />
+      </motion.div>
+
+      <div className="absolute bottom-3 left-0 right-0 text-center">
+        <span className="text-[8px] font-bold uppercase tracking-[0.3em] text-emerald-400 animate-pulse">Performing Semantic Vector Search</span>
+      </div>
+    </div>
+  );
+}
 
 // --- Breathing AI Orb ---
 function AIOrb({ isGenerating }: { isGenerating: boolean }) {
@@ -43,14 +144,11 @@ function ManuscriptMessage({ content, isNew }: { content: string; isNew?: boolea
       transition={{ duration: 1.2, ease: [0.25, 1, 0.5, 1] }}
       className="relative w-full overflow-hidden"
     >
-      {/* Animated Parchment Scroll Unfolding */}
       <div className="relative rounded-2xl rounded-bl-none overflow-hidden group">
-        {/* Glowing Sanskrit Border Effect */}
         <div className="absolute inset-0 border border-emerald-500/15 group-hover:border-emerald-500/40 transition-colors duration-700" />
         <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent opacity-50" />
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent opacity-50" />
         
-        {/* Floating Ink Particles (Simulated with CSS) */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
           {[...Array(5)].map((_, i) => (
             <motion.div
@@ -73,7 +171,6 @@ function ManuscriptMessage({ content, isNew }: { content: string; isNew?: boolea
         </div>
 
         <div className="relative bg-card/80 backdrop-blur-md px-6 py-6 shadow-2xl">
-          {/* Subtle Decorative Icon */}
           <div className="absolute top-4 right-4 opacity-5">
             <PenTool className="w-12 h-12 text-emerald-400" />
           </div>
@@ -103,9 +200,10 @@ function SanskritDivider() {
 }
 
 export default function ChatInterface() {
-  const { messages, addMessage, sessionId, isGenerating, setGenerating, isAudioEnabled, toggleAudio } = useStore();
+  const { messages, addMessage, sessionId, isGenerating, setGenerating, isAudioEnabled, toggleAudio, user } = useStore();
   const [input, setInput] = useState("");
   const [isListening, setIsListening] = useState(false);
+  const [showRetrievalPanel, setShowRetrievalPanel] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -153,15 +251,26 @@ export default function ChatInterface() {
     addMessage({ id: Date.now().toString(), role: 'user', content: userQuery });
     setGenerating(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const res = await fetch(`${apiUrl}/api/chat/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId, query: userQuery, language: "en" })
+        body: JSON.stringify({ 
+          session_id: sessionId, 
+          query: userQuery, 
+          language: "en",
+          user_id: user?.id 
+        })
       });
       if (res.ok) {
         const data = await res.json();
-        addMessage({ id: (Date.now() + 1).toString(), role: 'assistant', content: data.answer, citations: data.citations });
+        addMessage({ 
+          id: (Date.now() + 1).toString(), 
+          role: 'assistant', 
+          content: data.answer, 
+          citations: data.citations,
+          retrieval_metadata: data.retrieval_metadata
+        });
         speakText(data.answer);
       } else {
         const errorData = await res.json().catch(() => ({ detail: "Unknown disruption in the cosmic link." }));
@@ -191,15 +300,25 @@ export default function ChatInterface() {
           <AIOrb isGenerating={isGenerating} />
           <div>
             <h2 className="font-serif text-lg font-bold text-foreground leading-none">AI Vaidya</h2>
-            <p className="text-xs text-emerald-400/70 mt-0.5">
-              {isGenerating ? "Consulting the ancient texts..." : "Awaiting your query..."}
+            <p className="text-[10px] uppercase tracking-widest text-emerald-400 font-bold mt-1.5 flex items-center gap-1.5">
+              <Activity className="w-3 h-3" /> Grounded AI Mode
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={toggleAudio}
-          className="text-muted-foreground hover:text-emerald-400 rounded-full hover:bg-emerald-500/10 transition-all">
-          {isAudioEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShowRetrievalPanel(!showRetrievalPanel)}
+            className={`text-[10px] font-bold uppercase tracking-widest rounded-full px-3 h-8 border ${showRetrievalPanel ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'text-muted-foreground border-white/5'}`}
+          >
+            Retrieval Engine
+          </Button>
+          <Button variant="ghost" size="icon" onClick={toggleAudio}
+            className="text-muted-foreground hover:text-emerald-400 rounded-full hover:bg-emerald-500/10 transition-all">
+            {isAudioEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          </Button>
+        </div>
       </div>
 
       {/* --- Chat Area --- */}
@@ -221,12 +340,19 @@ export default function ChatInterface() {
                 <BookOpen className="w-10 h-10 text-emerald-400" />
               </div>
             </motion.div>
-            <p className="font-serif text-3xl font-semibold text-white mb-3">Namaste</p>
+            <p className="font-serif text-3xl font-semibold text-white mb-3">Grounded Intelligence</p>
             <p className="font-serif text-lg text-emerald-100/60 max-w-sm leading-relaxed italic">
-              "I draw knowledge only from the sacred texts you have provided. Ask the ancient wisdom."
+              "I draw knowledge ONLY from indexed Ayurvedic texts. No internet search, no hallucinations."
             </p>
             <SanskritDivider />
-            <p className="text-xs text-emerald-100/40 tracking-widest uppercase mt-4">Upload texts in the Sacred Library to begin</p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/5 text-[10px] text-emerald-400 uppercase font-bold">
+                <Target className="w-3 h-3" /> Vector Similarity
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1 rounded-full border border-emerald-500/20 bg-emerald-500/5 text-[10px] text-emerald-400 uppercase font-bold">
+                <Database className="w-3 h-3" /> RAG Grounded
+              </div>
+            </div>
           </motion.div>
         )}
 
@@ -250,7 +376,10 @@ export default function ChatInterface() {
                     <p className="text-sm md:text-base leading-relaxed">{msg.content}</p>
                   </div>
                 ) : (
-                  <ManuscriptMessage content={msg.content} isNew={index === messages.length - 1} />
+                  <div className="w-full">
+                    <ManuscriptMessage content={msg.content} isNew={index === messages.length - 1} />
+                    {showRetrievalPanel && <SemanticRetrievalPanel message={msg} />}
+                  </div>
                 )}
 
                 {/* Herb Cards */}
@@ -262,25 +391,19 @@ export default function ChatInterface() {
                   </div>
                 )}
 
-                {/* Citations */}
+                {/* Citations Footer */}
                 {msg.role === 'assistant' && msg.citations && msg.citations.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.8 }}
-                    className="mt-4 space-y-2 w-full"
+                    className="mt-4 flex flex-wrap gap-2 w-full"
                   >
-                    <p className="text-[10px] text-emerald-400/60 uppercase tracking-widest font-bold px-1">Source Index</p>
-                    <div className="flex flex-wrap gap-2">
-                      {msg.citations.map((cit, idx) => (
-                        <div key={idx} className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/20 rounded-xl px-3 py-2 text-xs text-emerald-100/70 hover:bg-emerald-500/15 transition-all cursor-pointer">
-                          <BookOpen className="w-3.5 h-3.5 flex-shrink-0 text-emerald-400" />
-                          <span className="truncate max-w-[140px] font-medium">{cit.source}</span>
-                          <span className="text-emerald-500/30">|</span>
-                          <span className="font-bold">p.{cit.page}</span>
-                        </div>
-                      ))}
-                    </div>
+                    {msg.citations.slice(0, 2).map((cit, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/10 rounded-xl px-3 py-1.5 text-[9px] text-emerald-100/40 uppercase font-bold">
+                        <BookOpen className="w-3 h-3 text-emerald-400/50" /> {cit.source} (p.{cit.page})
+                      </div>
+                    ))}
                   </motion.div>
                 )}
               </div>
@@ -293,24 +416,35 @@ export default function ChatInterface() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-start gap-4"
+            className="flex flex-col gap-4 w-full max-w-[85%]"
           >
-            <div className="flex-shrink-0 w-10 h-10 rounded-full border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center">
-              <RefreshCw className="w-5 h-5 text-emerald-400 animate-spin" />
-            </div>
-            <div className="bg-card/40 backdrop-blur-md border border-emerald-500/15 rounded-3xl rounded-bl-none px-6 py-4 flex items-center gap-3">
-              <div className="flex gap-1.5">
-                {[0, 1, 2].map((i) => (
-                  <motion.div
-                    key={i}
-                    className="w-2 h-2 bg-emerald-400 rounded-full"
-                    animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
-                    transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
-                  />
-                ))}
+            <div className="flex items-start gap-4">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center">
+                <RefreshCw className="w-5 h-5 text-emerald-400 animate-spin" />
               </div>
-              <span className="text-xs text-emerald-100/60 font-serif italic">Consulting ancient scripts...</span>
+              <div className="bg-card/40 backdrop-blur-md border border-emerald-500/15 rounded-3xl rounded-bl-none px-6 py-4 flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-2 h-2 bg-emerald-400 rounded-full"
+                      animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }}
+                      transition={{ repeat: Infinity, duration: 1, delay: i * 0.2 }}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-emerald-100/60 font-serif italic">Synthesizing Grounded Answer...</span>
+              </div>
             </div>
+            
+            {/* Visual Retrieval Feedback */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="ml-14"
+            >
+              <RetrievalAnimation />
+            </motion.div>
           </motion.div>
         )}
       </div>

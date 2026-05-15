@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { Leaf, MessageCircle, Library, Settings, Scan, Zap, Cloud, Calendar, BookOpen, User } from "lucide-react";
+import { useStore } from "@/store/useStore";
 
 export default function Navbar() {
   const pathname = usePathname();
 
-  // Don't show navbar on login page
-  if (pathname === "/login") return null;
+  const { user, logout } = useStore();
 
   const links = [
     { name: "Home", href: "/", icon: Leaf },
@@ -83,13 +83,25 @@ export default function Navbar() {
           })}
         </div>
 
-        {/* User / Login link */}
-        <Link href="/login" className="flex-shrink-0 ml-2">
-          <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-all">
-            <User className="w-4 h-4 text-white/40" />
-          </div>
-        </Link>
+        {/* User / Logout */}
+        <div className="flex items-center gap-3">
+          {user && (
+            <div className="hidden sm:flex flex-col items-end">
+              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">{user.full_name}</span>
+              <span className="text-[8px] text-white/40 uppercase tracking-tighter">Verified Seeker</span>
+            </div>
+          )}
+          <button 
+            onClick={user ? logout : undefined}
+            className="flex-shrink-0"
+          >
+            <div className="w-8 h-8 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/5 transition-all text-white/40 hover:text-emerald-400">
+              {user ? <Zap className="w-4 h-4" /> : <User className="w-4 h-4" />}
+            </div>
+          </button>
+        </div>
       </div>
     </motion.nav>
+
   );
 }

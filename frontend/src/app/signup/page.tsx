@@ -23,7 +23,7 @@ export default function SignupPage() {
     password: "",
   });
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.email || !formData.password || !formData.name) {
       toast.error("Please fill in all sacred fields.");
@@ -31,12 +31,30 @@ export default function SignupPage() {
     }
 
     setIsSubmitting(true);
-    
-    // Simulate signup ritual
-    setTimeout(() => {
-      toast.success("Welcome to the Ecosystem, " + formData.name);
-      router.push("/");
-    }, 2000);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/api/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          full_name: formData.name
+        })
+      });
+
+      if (res.ok) {
+        toast.success("Account created! You may now login.");
+        router.push("/login");
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || "The ritual failed. Please try again.");
+      }
+    } catch (e) {
+      toast.error("Cosmic connection lost. Is the backend running?");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

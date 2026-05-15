@@ -19,6 +19,7 @@ class DocumentResponse(DocumentBase):
 class ChatQuery(BaseModel):
     session_id: str
     query: str
+    user_id: Optional[int] = None
     language: Optional[str] = "en"
 
 class Citation(BaseModel):
@@ -27,7 +28,13 @@ class Citation(BaseModel):
     snippet: str
     score: float
 
+class RetrievalMetadata(BaseModel):
+    status: str
+    confidence: float
+    count: Optional[int] = 0
+
 class ChatResponse(BaseModel):
     answer: str
     citations: List[Citation]
     language: str
+    retrieval_metadata: Optional[RetrievalMetadata] = None

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useStore } from "@/store/useStore";
 
 const TempleBackground = dynamic(
   () => import("@/components/3d/TempleBackground"),
@@ -15,6 +16,7 @@ const TempleBackground = dynamic(
 
 export default function LoginPage() {
   const router = useRouter();
+  const { setAuth } = useStore();
   const [isEntering, setIsEntering] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -22,7 +24,7 @@ export default function LoginPage() {
     password: "",
   });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.email || !formData.password) {
       toast.error("Credentials required to enter the sanctuary.");
@@ -30,11 +32,32 @@ export default function LoginPage() {
     }
 
     setIsEntering(true);
-    // Simulate login ritual
-    setTimeout(() => {
-      toast.success("Identity verified. Welcome back.");
-      router.push("/");
-    }, 1500);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await fetch(`${apiUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData)
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setAuth(data.user, data.access_token);
+        toast.success("Identity verified. Welcome back.");
+        
+        // Simulate login ritual transition
+        setTimeout(() => {
+          router.push("/");
+        }, 1500);
+      } else {
+        const error = await res.json();
+        toast.error(error.detail || "Credentials rejected by the cosmic engine.");
+        setIsEntering(false);
+      }
+    } catch (e) {
+      toast.error("Cosmic connection lost. Is the backend running?");
+      setIsEntering(false);
+    }
   };
 
   return (

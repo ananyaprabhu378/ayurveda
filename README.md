@@ -3,12 +3,14 @@
 An Immersive AI-Powered Ayurvedic Knowledge Ecosystem.
 
 ## Features
-- **Upload Ayurvedic PDF Texts**: Built-in RAG pipeline using PyMuPDF and FAISS.
-- **Intelligent RAG Chat**: Chat with an AI that answers ONLY from your uploaded texts, providing exact page citations.
-- **Web Speech API Voice Assistant**: Talk to the AI naturally.
+- **Grounded RAG Pipeline**: Chat with an AI that answers ONLY from uploaded Ayurvedic texts or the local knowledge base.
+- **Zero-Internet Answering**: Strictly no-internet search policy to ensure answers are derived solely from trusted Ayurvedic sources.
+- **Semantic Retrieval Engine**: High-performance vector similarity search using FAISS and BGE embeddings.
+- **Explainable AI**: Real-time visualization of semantic confidence scores, retrieved chunks, and page-specific citations.
+- **Hallucination Prevention**: Integrated confidence thresholding to prevent generating ungrounded information.
+- **Web Speech API Voice Assistant**: Talk to the AI naturally with low-latency responses.
 - **3D Knowledge Graph**: Interactive Force-directed graph of Ayurvedic concepts.
-- **Multilingual**: Switch between English, Hindi, Kannada, and Sanskrit.
-- **Stunning UI**: Custom "Mystical Ayurveda Forest" theme using Framer Motion, React Three Fiber, and Tailwind.
+- **Immersive 3D Experience**: Cinematic Temple and Forest environments with particle effects and motion-blur interactions.
 
 ## Setup Instructions
 

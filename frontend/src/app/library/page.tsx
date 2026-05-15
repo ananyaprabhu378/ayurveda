@@ -104,7 +104,7 @@ export default function LibraryPage() {
 
   const fetchDocuments = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const res = await fetch(`${apiUrl}/api/documents/`);
       if (res.ok) {
         const data = await res.json();
@@ -123,7 +123,7 @@ export default function LibraryPage() {
     setIsUploading(true);
     setUploadProgress(0);
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     const formData = new FormData();
     formData.append("file", file);
 

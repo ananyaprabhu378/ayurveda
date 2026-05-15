@@ -29,7 +29,7 @@ export default function ResearchAssistantPage() {
 
   const fetchPapers = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const res = await fetch(`${apiUrl}/api/documents/`);
       if (res.ok) {
         const data = await res.json();
@@ -52,7 +52,7 @@ export default function ResearchAssistantPage() {
     if (mode === "beginner") query = `Explain the core concepts and findings of the paper ${selectedPaper.filename} as if I am a complete beginner with no medical background.`;
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const res = await fetch(`${apiUrl}/api/chat/`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
