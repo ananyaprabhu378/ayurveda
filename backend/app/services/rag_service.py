@@ -1,14 +1,30 @@
 import os
+import gc
+
+# Optimize memory usage for constrained environments (e.g., 512MB RAM)
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["TORCH_NUM_THREADS"] = "1"
+os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
+
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from langchain_core.prompts import PromptTemplate
 from langchain_groq import ChatGroq
 from app.core.config import settings
 
-# Initialize Embeddings
-embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+# Disable torch gradients globally to save memory
+import torch
+torch.set_grad_enabled(False)
+
+# Initialize Embeddings with memory optimizations
+embeddings = HuggingFaceEmbeddings(
+    model_name="BAAI/bge-small-en-v1.5",
+    model_kwargs={'device': 'cpu'},
+    encode_kwargs={'normalize_embeddings': True, 'batch_size': 1}
+)
 
 # Baseline Ayurvedic Knowledge (Seeds if no PDFs are uploaded)
 BASELINE_DATA = [
@@ -69,6 +85,7 @@ def process_and_index_document(pages_data: list):
         vector_store.add_documents(chunks)
         
     save_vector_store(vector_store)
+    gc.collect() # Free memory after indexing
     return len(chunks)
 
 def query_rag(query: str, language: str = "en") -> dict:
@@ -154,6 +171,8 @@ def query_rag(query: str, language: str = "en") -> dict:
     
     chain = prompt | llm
     response = chain.invoke({"context": context, "query": query, "language": language})
+    
+    gc.collect() # Free memory after generation
     
     return {
         "answer": response.content,
