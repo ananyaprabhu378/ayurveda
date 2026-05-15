@@ -19,36 +19,14 @@ def get_embeddings():
         _embeddings = FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5", threads=1)
     return _embeddings
 
-# Baseline Ayurvedic Knowledge (Seeds if no PDFs are uploaded)
-BASELINE_DATA = [
-    {"source": "Ayurvedic Fundamentals", "page": 1, "text": "Ayurveda is based on the principle of three Doshas: Vata (Air/Space), Pitta (Fire/Water), and Kapha (Earth/Water). Balance among these energies leads to health, while imbalance leads to disease."},
-    {"source": "Ayurvedic Fundamentals", "page": 2, "text": "Dinacharya (Daily Routine) is a core Ayurvedic concept. It includes waking up before sunrise (Brahma Muhurta), tongue scraping, oil pulling, and meditation to maintain circadian rhythm."},
-    {"source": "Materia Medica", "page": 1, "text": "Ashwagandha (Withania somnifera) is a powerful adaptogen that reduces stress, balances Vata and Kapha, and improves physical strength (Ojas)."},
-    {"source": "Materia Medica", "page": 2, "text": "Brahmi (Bacopa monnieri) is a premier brain tonic. It enhances memory, focus, and intelligence while cooling Pitta and calming Vata."},
-    {"source": "Materia Medica", "page": 3, "text": "Turmeric (Curcuma longa) is highly anti-inflammatory. It balances all three doshas but is particularly effective for Kapha-related congestion and Pitta-related inflammation."},
-    {"source": "Materia Medica", "page": 4, "text": "Tulsi (Holy Basil) is a sacred herb used for respiratory health, immune support, and spiritual clarity. It balances Kapha and Vata."},
-    {"source": "Ayurvedic Principles", "page": 5, "text": "Agni (Digestive Fire) is the most important factor in health. Strong Agni ensures proper nutrient absorption and prevents the formation of Ama (toxins)."}
-]
-
 def get_vector_store():
     if os.path.exists(settings.FAISS_INDEX_DIR):
         try:
             return FAISS.load_local(settings.FAISS_INDEX_DIR, get_embeddings(), allow_dangerous_deserialization=True)
         except Exception as e:
             print(f"Error loading FAISS index: {e}")
-            return seed_baseline_knowledge()
-    else:
-        return seed_baseline_knowledge()
-
-def seed_baseline_knowledge():
-    print("Seeding baseline Ayurvedic knowledge...")
-    documents = [
-        Document(page_content=item['text'], metadata={"source": item['source'], "page": item['page']})
-        for item in BASELINE_DATA
-    ]
-    vector_store = FAISS.from_documents(documents, get_embeddings())
-    save_vector_store(vector_store)
-    return vector_store
+            return None
+    return None
 
 def save_vector_store(vector_store: FAISS):
     os.makedirs(settings.FAISS_INDEX_DIR, exist_ok=True)
