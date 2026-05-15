@@ -87,7 +87,41 @@ def stream_and_index_pdf(filepath: str) -> tuple[int, int]:
     gc.collect()
     return total_pages, total_chunks
 
-def query_rag(query: str, language: str = "en") -> dict:
+def reformulate_query(query: str, history: list) -> str:
+    if not history or not settings.GROQ_API_KEY or settings.GROQ_API_KEY == "your-groq-api-key":
+        return query
+        
+    try:
+        # Use an ultra-fast, small model just for rewriting the query
+        llm = ChatGroq(temperature=0.0, model_name="llama3-8b-8192", groq_api_key=settings.GROQ_API_KEY)
+        
+        history_str = "\n".join([f"{msg['role'].capitalize()}: {msg['content']}" for msg in history[-4:]]) # Last 4 turns
+        
+        prompt = PromptTemplate.from_template("""
+        Given the following chat history and the user's latest question, rewrite the latest question into a fully descriptive standalone search query. 
+        Replace words like 'it', 'that', 'they', 'why' with the actual subject from the history.
+        Do NOT answer the question. ONLY output the rewritten standalone query.
+        
+        Chat History:
+        {history}
+        
+        Latest Question: {query}
+        
+        Standalone Search Query:
+        """)
+        
+        chain = prompt | llm
+        response = chain.invoke({"history": history_str, "query": query})
+        return response.content.strip().replace('"', '')
+    except Exception as e:
+        print(f"Reformulation error: {e}")
+        return query
+
+def query_rag(query: str, language: str = "en", history: list = None) -> dict:
+    # 1. Rewrite the query if there is conversation history (resolves "what is that?")
+    standalone_query = reformulate_query(query, history) if history else query
+    print(f"Original: {query} -> Search Query: {standalone_query}")
+
     vector_store = get_vector_store()
     if not vector_store:
         return {
@@ -96,8 +130,8 @@ def query_rag(query: str, language: str = "en") -> dict:
             "retrieval_metadata": {"status": "no_index", "confidence": 0}
         }
         
-    # Retrieve top chunks with scores (FAISS returns L2 distance, lower is better)
-    docs_with_scores = vector_store.similarity_search_with_score(query, k=4)
+    # Retrieve top chunks with scores using the STANDALONE query
+    docs_with_scores = vector_store.similarity_search_with_score(standalone_query, k=4)
     
     if not docs_with_scores:
         return {
@@ -162,13 +196,13 @@ def query_rag(query: str, language: str = "en") -> dict:
     Retrieved Context:
     {context}
 
-    User Question: {query}
+    User Question: {standalone_query}
     
     Grounded Answer:
     """)
     
     chain = prompt | llm
-    response = chain.invoke({"context": context, "query": query, "language": language})
+    response = chain.invoke({"context": context, "standalone_query": standalone_query, "language": language})
     
     gc.collect() # Free memory after generation
     

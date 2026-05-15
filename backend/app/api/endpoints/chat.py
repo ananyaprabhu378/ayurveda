@@ -9,6 +9,11 @@ router = APIRouter()
 
 @router.post("/", response_model=ChatResponse)
 def chat_with_vaidya(query: ChatQuery, db: Session = Depends(get_db)):
+    # Fetch recent history for context BEFORE saving the new query
+    history_records = db.query(ChatHistory).filter(ChatHistory.session_id == query.session_id).order_by(ChatHistory.created_at.desc()).limit(4).all()
+    history_records.reverse() # Put in chronological order
+    history_list = [{"role": msg.role, "content": msg.content} for msg in history_records]
+
     # Save User Query
     user_msg = ChatHistory(
         session_id=query.session_id,
@@ -21,7 +26,7 @@ def chat_with_vaidya(query: ChatQuery, db: Session = Depends(get_db)):
     
     # RAG
     try:
-        response_data = query_rag(query.query, language=query.language)
+        response_data = query_rag(query.query, language=query.language, history=history_list)
     except Exception as e:
         print(f"Chat API Error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"The ancient link is shaky: {str(e)}")
